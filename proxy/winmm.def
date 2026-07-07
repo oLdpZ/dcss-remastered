@@ -1,0 +1,23 @@
+LIBRARY winmm
+EXPORTS
+    timeBeginPeriod = winmm_orig.timeBeginPeriod
+    timeEndPeriod = winmm_orig.timeEndPeriod
+    timeGetTime = winmm_orig.timeGetTime
+    waveInAddBuffer = winmm_orig.waveInAddBuffer
+    waveInClose = winmm_orig.waveInClose
+    waveInGetDevCapsW = winmm_orig.waveInGetDevCapsW
+    waveInGetNumDevs = winmm_orig.waveInGetNumDevs
+    waveInOpen = winmm_orig.waveInOpen
+    waveInPrepareHeader = winmm_orig.waveInPrepareHeader
+    waveInReset = winmm_orig.waveInReset
+    waveInStart = winmm_orig.waveInStart
+    waveInUnprepareHeader = winmm_orig.waveInUnprepareHeader
+    waveOutClose = winmm_orig.waveOutClose
+    waveOutGetDevCapsW = winmm_orig.waveOutGetDevCapsW
+    waveOutGetErrorTextW = winmm_orig.waveOutGetErrorTextW
+    waveOutGetNumDevs = winmm_orig.waveOutGetNumDevs
+    waveOutOpen = winmm_orig.waveOutOpen
+    waveOutPrepareHeader = winmm_orig.waveOutPrepareHeader
+    waveOutReset = winmm_orig.waveOutReset
+    waveOutUnprepareHeader = winmm_orig.waveOutUnprepareHeader
+    waveOutWrite = winmm_orig.waveOutWrite

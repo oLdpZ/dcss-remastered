@@ -1,0 +1,10 @@
+audio/sfx/*.wav
+audio/sfx/*.ogg
+audio/music/*
+audio/ambience/*
+audio/markers/*.wav
+__pycache__/
+*.obj
+*.exp
+*.lib
+proxy/winmm.dll
