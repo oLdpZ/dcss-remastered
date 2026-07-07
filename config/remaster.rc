@@ -29,7 +29,21 @@ sound += LOW HITPOINT WARNING:evt__hp_low.wav
 {
 local last_branch = nil
 local last_hp_band = nil
+local last_xl = 0
+local last_name = nil
 function ready()
+  -- Rileva una NUOVA partita (dopo la morte): nome diverso o livello esperienza azzerato.
+  -- Serve perche' last_branch persiste nello stesso processo crawl.exe tra una partita e l'altra.
+  local ok_n, nm = pcall(function() return you.name() end)
+  local ok_x, xl = pcall(function() return you.xl() end)
+  if ok_n and ok_x then
+    if nm ~= last_name or xl < last_xl then
+      last_branch = nil      -- forza il riavvio della musica del branch
+      last_hp_band = nil
+    end
+    last_name = nm
+    last_xl = xl
+  end
   local ok, b = pcall(function() return you.branch() end)
   if ok and b and b ~= last_branch then
     last_branch = b
