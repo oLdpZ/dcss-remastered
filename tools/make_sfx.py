@@ -111,4 +111,28 @@ save("evt__level_up.wav", mix(lu))
 save("evt__hp_low.wav", mix([pad(tone(70, 0.14, 0.05, vol=0.7), 0.5),
                              pad([0]*int(0.18*FR) + tone(64, 0.16, 0.06, vol=0.55), 0.5)]))
 
+def door_creak(dur, tremolo_hz, vol):
+    n = int(dur * FR); out = []; y = 0.0
+    for i in range(n):
+        t = i / FR
+        x = random.uniform(-1, 1)
+        y = y + 0.05 * (x - y)              # lowpass pesante -> rumore basso (legno)
+        trem = 0.55 + 0.45 * math.sin(2 * math.pi * tremolo_hz * t)  # stutter del cigolio
+        env = math.sin(math.pi * i / n)     # dentro/fuori morbido
+        out.append(vol * env * trem * y * 5.0)
+    return out
+
+def wood_knock(freq, vol):
+    return tone(freq, 0.10, 0.03, vol=vol, partials=(1, 0.5, 0.25))
+
+# porta che si apre: cigolio + leggero tonfo del chiavistello
+random.seed(50)
+save("evt__door.wav", mix([pad(door_creak(0.38, 17, vol=0.5), 0.52),
+                           pad([0]*int(0.40*FR) + wood_knock(120, 0.35), 0.52)]))
+# porta che si chiude: cigolio piu' corto + tonfo piu' deciso
+random.seed(51)
+save("evt__door_close.wav", mix([pad(door_creak(0.28, 20, vol=0.45), 0.5),
+                                 pad([0]*int(0.30*FR) + wood_knock(95, 0.6), 0.5),
+                                 pad([0]*int(0.30*FR) + noise(0.06, 0.02, vol=0.25, lp=0.5), 0.5)]))
+
 print("SFX sintetizzati in", OUT)
