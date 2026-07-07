@@ -9,6 +9,8 @@
     "evt__pickup":    {"files": ["evt__pickup.wav"], "volume": 0.6, "group": "item"},
     "evt__door":       {"files": ["evt__door.wav"], "volume": 0.6, "group": "env"},
     "evt__door_close": {"files": ["evt__door_close.wav"], "volume": 0.6, "group": "env"},
+    "evt__stairs_down": {"files": ["evt__stairs_down.wav"], "volume": 0.6, "group": "env"},
+    "evt__stairs_up":   {"files": ["evt__stairs_up.wav"], "volume": 0.6, "group": "env"},
     "evt__spot":      {"files": ["evt__spot.wav"], "volume": 0.55, "group": "combat"},
     "evt__kill":      {"files": ["evt__kill.wav"], "volume": 0.8, "group": "combat"},
     "evt__level_up":  {"files": ["evt__level_up.wav"], "volume": 1.0, "group": "jingle", "duck": true}

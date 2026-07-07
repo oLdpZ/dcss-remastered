@@ -135,4 +135,23 @@ save("evt__door_close.wav", mix([pad(door_creak(0.28, 20, vol=0.45), 0.5),
                                  pad([0]*int(0.30*FR) + wood_knock(95, 0.6), 0.5),
                                  pad([0]*int(0.30*FR) + noise(0.06, 0.02, vol=0.25, lp=0.5), 0.5)]))
 
+def footstep(freq, vol):
+    return mix([tone(freq, 0.09, 0.03, vol=vol * 0.5, partials=(1, 0.4)),
+                noise(0.06, 0.02, vol=vol * 0.45, lp=0.45)])
+
+def stairs(direction):  # +1 = su (pitch crescente), -1 = giu' (pitch calante)
+    parts = []
+    base = 120
+    for k in range(3):
+        f = base + direction * k * 22
+        parts.append(pad([0] * int(0.11 * k * FR) + footstep(f, 0.6), 0.6))
+    w0, w1 = (300, 520) if direction > 0 else (520, 260)
+    parts.append(pad(sweep(w0, w1, 0.35, 0.18, vol=0.22), 0.6))  # whoosh direzionale
+    return mix(parts)
+
+random.seed(60)
+save("evt__stairs_down.wav", stairs(-1))
+random.seed(61)
+save("evt__stairs_up.wav", stairs(1))
+
 print("SFX sintetizzati in", OUT)
