@@ -9,9 +9,9 @@ Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
     Where-Object { $_.CommandLine -like '*director.py*' } |
     ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
 
-# Avvia il Director
+# Avvia il Director (finestra nascosta; per il debug usa: python director\director.py)
 $dir = Start-Process python -ArgumentList "`"$dirScript`"" `
-        -WorkingDirectory "$PSScriptRoot\director" -PassThru
+        -WorkingDirectory "$PSScriptRoot\director" -WindowStyle Hidden -PassThru
 Start-Sleep -Milliseconds 900
 
 # Lancia il gioco e attendi la sua chiusura
