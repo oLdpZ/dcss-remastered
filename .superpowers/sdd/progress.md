@@ -13,3 +13,4 @@ IMPORTANT: (3) WriteFile bloccante + load Sound non in cache sull'hot path -> ri
 (4) duck/unduck non tocca _music_next durante crossfade; (6) ERROR_PIPE_CONNECTED non gestito.
 Fix in corso via subagent. Accettati/minori: #5 (globals C, single-thread ok), #7-#10 (edge).
 Fix robustezza (review finale): complete (commit 0f470a5) — pipe lifecycle robusto, isolamento eccezioni, prewarm SFX, duck su entrambi i canali. Test 6/6.
+Fase 4 (musica 22 branch + SFX veri sintetizzati): complete.
