@@ -30,6 +30,7 @@
 #pragma comment(linker, "/EXPORT:waveOutWrite=winmm_orig.waveOutWrite")
 
 static HMODULE g_real = NULL;
+static HANDLE  g_pipe = INVALID_HANDLE_VALUE;
 typedef BOOL (WINAPI *sndPlaySoundW_t)(LPCWSTR, UINT);
 
 static HMODULE real_winmm(void) {
@@ -37,19 +38,40 @@ static HMODULE real_winmm(void) {
     return g_real;
 }
 
-static void log_path(LPCWSTR s) {
-    FILE *f = _wfopen(L"remaster_proxy.log", L"a, ccs=UTF-8");
-    if (f) { fwprintf(f, L"%s\n", s ? s : L"(null)"); fclose(f); }
-}
-
-BOOL WINAPI proxy_sndPlaySoundW(LPCWSTR pszSound, UINT fuSound) {
-    log_path(pszSound);
+static BOOL passthrough(LPCWSTR s, UINT f) {
     HMODULE h = real_winmm();
     if (h) {
         sndPlaySoundW_t real = (sndPlaySoundW_t)GetProcAddress(h, "sndPlaySoundW");
-        if (real) return real(pszSound, fuSound);
+        if (real) return real(s, f);
     }
     return FALSE;
+}
+
+static BOOL try_connect(void) {
+    if (g_pipe != INVALID_HANDLE_VALUE) return TRUE;
+    g_pipe = CreateFileW(L"\\\\.\\pipe\\dcss_audio", GENERIC_WRITE, 0, NULL,
+                         OPEN_EXISTING, 0, NULL);
+    return g_pipe != INVALID_HANDLE_VALUE;
+}
+
+static BOOL send_token(LPCWSTR pszSound) {
+    if (!try_connect()) return FALSE;
+    char buf[1024]; int n = 0;
+    if (pszSound)
+        n = WideCharToMultiByte(CP_UTF8, 0, pszSound, -1, buf, sizeof(buf) - 2, NULL, NULL);
+    if (n <= 0) { buf[0] = 0; n = 1; }
+    buf[n - 1] = '\n';                 /* sostituisce il NUL con newline */
+    DWORD written = 0;
+    if (!WriteFile(g_pipe, buf, (DWORD)n, &written, NULL)) {
+        CloseHandle(g_pipe); g_pipe = INVALID_HANDLE_VALUE;  /* pipe rotta -> riconnetti dopo */
+        return FALSE;
+    }
+    return TRUE;
+}
+
+BOOL WINAPI proxy_sndPlaySoundW(LPCWSTR pszSound, UINT fuSound) {
+    if (send_token(pszSound)) return TRUE;   /* Director attivo: possiede l'audio */
+    return passthrough(pszSound, fuSound);   /* fallback SFX nativi */
 }
 
 BOOL WINAPI DllMain(HINSTANCE h, DWORD reason, LPVOID unused) {
