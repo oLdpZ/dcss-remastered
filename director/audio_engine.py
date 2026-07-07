@@ -37,10 +37,21 @@ class AudioEngine:
             print("[music err]", file, e)
 
     def duck(self, volume=0.3):
-        self._ducked = True; self._music_ch.set_volume(volume)
+        self._ducked = True
+        self._music_ch.set_volume(volume)
+        self._music_next.set_volume(volume)
 
     def unduck(self):
-        self._ducked = False; self._music_ch.set_volume(self._music_vol)
+        self._ducked = False
+        self._music_ch.set_volume(self._music_vol)
+        self._music_next.set_volume(self._music_vol)
 
     def stop_music(self):
         self._music_ch.fadeout(800); self._music_next.fadeout(800)
+
+    def prewarm(self, subdir, files):
+        for f in files:
+            try:
+                self._load(subdir, f)
+            except Exception as e:
+                print("[prewarm err]", f, e)

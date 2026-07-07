@@ -10,6 +10,12 @@ def main():
     soundmap = json.load(open(os.path.join(HERE, "soundmap.json"), encoding="utf-8"))
     router = Router(soundmap)
     engine = AudioEngine(os.path.abspath(AUDIO_ROOT))
+
+    sfx_files = []
+    for entry in soundmap.get("sfx", {}).values():
+        sfx_files.extend(entry.get("files", []))
+    engine.prewarm("sfx", sfx_files)
+
     print("[director] pronto. In ascolto su \\\\.\\pipe\\dcss_audio")
 
     def handle(raw):
