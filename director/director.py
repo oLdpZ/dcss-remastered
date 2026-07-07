@@ -14,7 +14,9 @@ def main():
 
     def handle(raw):
         token = path_to_token(raw)
-        for a in router.route(token):
+        actions = router.route(token)
+        print("[evt]", token, "->", [a["op"] for a in actions] or "(nessuna azione)")
+        for a in actions:
             op = a["op"]
             if op == "sfx":     engine.play_sfx(a["file"], a["volume"], a["group"])
             elif op == "music": engine.play_music(a["file"], a["volume"])
@@ -23,7 +25,11 @@ def main():
             elif op == "stop_music": engine.stop_music()
         sys.stdout.flush()
 
-    PipeServer(handle).serve_forever()
+    def on_disconnect():
+        print("[director] gioco disconnesso: sfumo la musica")
+        engine.stop_music()
+
+    PipeServer(handle, on_disconnect=on_disconnect).serve_forever()
 
 if __name__ == "__main__":
     main()

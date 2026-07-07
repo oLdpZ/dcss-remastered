@@ -20,3 +20,24 @@ sound += experience level:evt__level_up.wav
 sound += reach.*level:evt__level_up.wav
 # --- HP basso: regex predefinita del motore ---
 sound += LOW HITPOINT WARNING:evt__hp_low.wav
+
+# === Hook Lua: musica per zona + ducking su HP basso (Fase 3) ===
+{
+local last_branch = nil
+local last_hp_band = nil
+function ready()
+  local ok, b = pcall(function() return you.branch() end)
+  if ok and b and b ~= last_branch then
+    last_branch = b
+    crawl.playsound("remaster/audio/markers/state__branch_" .. b .. ".wav")
+  end
+  local hp, mhp = you.hp()
+  if mhp and mhp > 0 then
+    local band = ((hp * 100) / mhp) < 30 and "low" or "ok"
+    if band ~= last_hp_band then
+      last_hp_band = band
+      crawl.playsound("remaster/audio/markers/state__hp_" .. band .. ".wav")
+    end
+  end
+end
+}

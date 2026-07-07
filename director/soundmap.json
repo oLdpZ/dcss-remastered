@@ -10,7 +10,15 @@
     "evt__kill":      {"files": ["evt__kill.wav"], "volume": 0.8, "group": "combat"},
     "evt__level_up":  {"files": ["evt__level_up.wav"], "volume": 1.0, "group": "jingle", "duck": true}
   },
-  "music": {},
+  "music": {
+    "state__branch_D":      {"file": "dungeon.wav", "volume": 0.5},
+    "state__branch_Temple": {"file": "temple.wav",  "volume": 0.45},
+    "state__branch_Lair":   {"file": "lair.wav",    "volume": 0.5},
+    "state__branch_Orc":    {"file": "orc.wav",     "volume": 0.55},
+    "state__branch_Crypt":  {"file": "crypt.wav",   "volume": 0.5},
+    "state__branch_Depths": {"file": "depths.wav",  "volume": 0.55}
+  },
   "control": {"state__hp_low": {"op": "duck", "volume": 0.3},
+              "state__hp_ok":  {"op": "unduck"},
               "state__player_death": {"op": "stop_music"}}
 }
