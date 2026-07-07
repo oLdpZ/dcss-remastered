@@ -153,4 +153,5 @@ Findings from analyzing the stock binary — useful if you port this to another 
   This add-on ships none of its code or binaries and communicates with the stock game only
   through the WinMM ABI and a named pipe.
 
-This add-on's own code is provided as-is for personal, non-commercial use.
+This add-on's own code is provided as-is for **personal, non-commercial use** —
+see [`LICENSE`](LICENSE).

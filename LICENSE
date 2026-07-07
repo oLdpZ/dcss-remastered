@@ -1,0 +1,38 @@
+DCSS Remastered Audio — Personal, Non-Commercial License
+Copyright (c) 2026 oLdpZ
+
+Scope
+-----
+This license covers ONLY the source code and text authored in this repository
+(the C proxy, the Python Audio Director, the tools, the config, and the docs).
+It does NOT cover third-party assets that this project downloads or generates:
+
+  * Music is by Kevin MacLeod (incompetech.com) under CC-BY 4.0 — see CREDITS.txt.
+  * Synthesized sound effects are released as CC0 / public domain.
+  * Dungeon Crawl Stone Soup (crawl/crawl) is a separate GPL-2.0 project; none of
+    its code or binaries is included or redistributed here.
+
+Grant
+-----
+Permission is granted, free of charge, to any person obtaining a copy of this
+software, to use, copy, modify, and distribute it for PERSONAL, NON-COMMERCIAL
+purposes, subject to the following conditions:
+
+  1. The above copyright notice and this license shall be included in all copies
+     or substantial portions of the software.
+
+  2. NON-COMMERCIAL USE ONLY. You may not sell the software, offer it as part of
+     a paid product or service, or otherwise use it primarily for commercial
+     advantage or monetary compensation, without prior written permission from
+     the copyright holder.
+
+  3. Attribution is required: keep the copyright notice and a link to the
+     original repository in derivative works.
+
+Disclaimer
+----------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHOR BE
+LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM, OUT OF, OR IN
+CONNECTION WITH THE SOFTWARE OR ITS USE.
