@@ -46,8 +46,13 @@ local last_branch = nil
 local last_hp_band = nil
 local last_xl = 0
 local last_name = nil
-local last_px = nil
-local last_py = nil
+local last_turns = -1
+local msg_this_turn = false
+-- Hook messaggi: alzato ogni volta che il gioco stampa una riga durante un'azione.
+-- Serve a distinguere una camminata (silenziosa) da attacco/cast/pozione/ecc.
+function c_message(text, channel)
+  msg_this_turn = true
+end
 function ready()
   -- Rileva una NUOVA partita (dopo la morte): nome diverso o livello esperienza azzerato.
   -- Serve perche' last_branch persiste nello stesso processo crawl.exe tra una partita e l'altra.
@@ -57,7 +62,7 @@ function ready()
     if nm ~= last_name or xl < last_xl then
       last_branch = nil      -- forza il riavvio della musica del branch
       last_hp_band = nil
-      last_px = nil          -- niente passo spurio all'inizio di una nuova partita
+      last_turns = -1        -- niente passo spurio all'inizio di una nuova partita
     end
     last_name = nm
     last_xl = xl
@@ -75,21 +80,17 @@ function ready()
       crawl.playsound("remaster/audio/markers/state__hp_" .. band .. ".wav")
     end
   end
-  -- Passo di camminata: nessun messaggio di gioco lo segnala, quindi lo deduciamo
-  -- dal cambio di posizione. Suona SOLO se ci si e' spostati di una casella adiacente
-  -- (dx,dy in -1..1, non entrambi 0): esclude attesa/attacco/cast (pos invariata) e
-  -- scale/teletrasporto (salto > 1 casella).
-  local okp, px, py = pcall(function() return you.pos() end)
-  if okp and px and py then
-    if last_px ~= nil then
-      local dx = px - last_px
-      local dy = py - last_py
-      if (dx ~= 0 or dy ~= 0) and dx >= -1 and dx <= 1 and dy >= -1 and dy <= 1 then
-        crawl.playsound("remaster/audio/sfx/evt__step.wav")
-      end
+  -- Passo di camminata: la posizione non e' leggibile in clua, quindi deduciamo
+  -- il movimento dal contatore turni. Un passo su pavimento vuoto avanza di 1 turno
+  -- SENZA stampare messaggi; attacco/cast/pozione/pickup stampano sempre qualcosa
+  -- (msg_this_turn), riposo/travel avanzano di piu' turni: tutti esclusi.
+  local okt, tn = pcall(function() return you.turns() end)
+  if okt and tn then
+    if last_turns >= 0 and tn == last_turns + 1 and not msg_this_turn then
+      crawl.playsound("remaster/audio/sfx/evt__step.wav")
     end
-    last_px = px
-    last_py = py
+    last_turns = tn
   end
+  msg_this_turn = false
 end
 }

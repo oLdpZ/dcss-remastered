@@ -4,6 +4,7 @@ audio/music/*
 audio/ambience/*
 audio/markers/*.wav
 __pycache__/
+director/director.log
 *.obj
 *.exp
 *.lib

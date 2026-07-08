@@ -1,4 +1,4 @@
-import json, os, sys
+import json, os, sys, time
 from router import path_to_token, Router
 from audio_engine import AudioEngine
 from pipe_server import PipeServer
@@ -7,6 +7,12 @@ from gfx_state import GfxShmem
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 AUDIO_ROOT = os.path.join(HERE, "..", "audio")
+
+# Log su file: il Director gira con finestra nascosta, quindi lo stdout non si vede.
+# Ogni evento ricevuto viene registrato qui per diagnostica.
+_LOG = open(os.path.join(HERE, "director.log"), "a", encoding="utf-8", buffering=1)
+def logln(msg):
+    _LOG.write(time.strftime("%H:%M:%S ") + msg + "\n")
 
 def main():
     soundmap = json.load(open(os.path.join(HERE, "soundmap.json"), encoding="utf-8"))
@@ -35,11 +41,14 @@ def main():
         print("[director] musica menu:", menu["file"])
 
     print("[director] pronto. In ascolto su \\\\.\\pipe\\dcss_audio")
+    logln("=== director avviato, in ascolto ===")
 
     def handle(raw):
         token = path_to_token(raw)
         actions = router.route(token)
-        print("[evt]", token, "->", [a["op"] for a in actions] or "(nessuna azione)")
+        ops = [a["op"] for a in actions] or "(nessuna azione)"
+        print("[evt]", token, "->", ops)
+        logln("[evt] " + token + " -> " + str(ops))
         for a in actions:
             op = a["op"]
             if op == "sfx":     engine.play_sfx(a["file"], a["volume"], a["group"], a.get("duck", False))
