@@ -8,3 +8,5 @@ __pycache__/
 *.exp
 *.lib
 proxy/winmm.dll
+gfx/opengl32.dll
+gfx/harness/*.exe
