@@ -3,6 +3,7 @@
 #include "gl_forwarders.h"
 #include "iat_hook.h"
 #include "postprocess.h"
+#include "shmem.h"
 
 /* Sovrascriviamo glViewport per conoscere la risoluzione del framebuffer.
    Nome decorato __stdcall: 4 argomenti da 4 byte -> @16. */
@@ -24,8 +25,10 @@ static int gfx_off(void) {
 }
 
 static BOOL WINAPI hook_SwapBuffers(HDC hdc) {
-    if (!gfx_off() && g_vp_w > 0 && g_vp_h > 0)
-        pp_draw_overlay(g_vp_w, g_vp_h);
+    if (!gfx_off()) {
+        shmem_poll();
+        pp_draw(shmem_get(), g_vp_w, g_vp_h);
+    }
     return g_real_swap ? g_real_swap(hdc) : SwapBuffers(hdc);
 }
 

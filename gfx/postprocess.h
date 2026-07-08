@@ -1,2 +1,3 @@
 #pragma once
-void pp_draw_overlay(int w, int h);
+#include "shared_state.h"
+void pp_draw(const GfxState *st, int w, int h);
