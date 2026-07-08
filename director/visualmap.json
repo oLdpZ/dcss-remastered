@@ -1,0 +1,39 @@
+{
+  "master": {"enable": 1, "intensity": 1.0},
+  "grades": {
+    "D":      {"tint": [0.10,0.12,0.18], "strength": 0.10, "vignette": 0.20, "bloom_base": 0.0},
+    "Temple": {"tint": [0.55,0.45,0.20], "strength": 0.14, "vignette": 0.15, "bloom_base": 0.05},
+    "Lair":   {"tint": [0.15,0.45,0.18], "strength": 0.22, "vignette": 0.25, "bloom_base": 0.0},
+    "Swamp":  {"tint": [0.25,0.30,0.12], "strength": 0.26, "vignette": 0.30, "bloom_base": 0.0},
+    "Shoals": {"tint": [0.20,0.45,0.60], "strength": 0.20, "vignette": 0.15, "bloom_base": 0.03},
+    "Snake":  {"tint": [0.35,0.42,0.12], "strength": 0.22, "vignette": 0.20, "bloom_base": 0.0},
+    "Spider": {"tint": [0.28,0.15,0.35], "strength": 0.26, "vignette": 0.45, "bloom_base": 0.0},
+    "Slime":  {"tint": [0.25,0.45,0.10], "strength": 0.30, "vignette": 0.25, "bloom_base": 0.06},
+    "Orc":    {"tint": [0.45,0.28,0.12], "strength": 0.20, "vignette": 0.25, "bloom_base": 0.0},
+    "Elf":    {"tint": [0.30,0.30,0.55], "strength": 0.22, "vignette": 0.20, "bloom_base": 0.06},
+    "Vaults": {"tint": [0.25,0.30,0.38], "strength": 0.16, "vignette": 0.25, "bloom_base": 0.0},
+    "Crypt":  {"tint": [0.18,0.22,0.30], "strength": 0.30, "vignette": 0.45, "bloom_base": 0.0},
+    "Tomb":   {"tint": [0.45,0.38,0.20], "strength": 0.24, "vignette": 0.35, "bloom_base": 0.0},
+    "Depths": {"tint": [0.14,0.14,0.20], "strength": 0.22, "vignette": 0.40, "bloom_base": 0.0},
+    "Zot":    {"tint": [0.30,0.35,0.55], "strength": 0.24, "vignette": 0.20, "bloom_base": 0.08},
+    "Hell":   {"tint": [0.55,0.15,0.12], "strength": 0.30, "vignette": 0.35, "bloom_base": 0.0},
+    "Geh":    {"tint": [0.60,0.25,0.10], "strength": 0.32, "vignette": 0.30, "bloom_base": 0.05},
+    "Coc":    {"tint": [0.35,0.55,0.70], "strength": 0.30, "vignette": 0.30, "bloom_base": 0.03},
+    "Tar":    {"tint": [0.10,0.10,0.12], "strength": 0.34, "vignette": 0.50, "bloom_base": 0.0},
+    "Dis":    {"tint": [0.32,0.34,0.38], "strength": 0.30, "vignette": 0.35, "bloom_base": 0.0},
+    "Abyss":  {"tint": [0.35,0.15,0.40], "strength": 0.30, "vignette": 0.40, "bloom_base": 0.05, "unstable": 1},
+    "Pan":    {"tint": [0.40,0.25,0.45], "strength": 0.30, "vignette": 0.35, "bloom_base": 0.05, "unstable": 1}
+  },
+  "modifiers": {
+    "hp_low":  {"desaturate": 0.40, "vignette_add": 0.30, "vignette_tint": [0.6,0.0,0.0]},
+    "hp_ok":   {},
+    "player_death": {"desaturate": 1.0, "fade_black": 1.0}
+  },
+  "events": {
+    "evt__melee_hit": {"flash": [1,1,1], "flash_intensity": 0.12, "shake": 0.10},
+    "evt__kill":      {"flash": [1,1,1], "flash_intensity": 0.18, "shake": 0.15},
+    "evt__ranged":    {"flash": [0.8,0.9,1.0], "flash_intensity": 0.08},
+    "evt__cast_spell":{"bloom": [0.3,0.6,1.0], "bloom_intensity": 0.5},
+    "evt__level_up":  {"flash": [1.0,0.9,0.4], "flash_intensity": 0.35, "bloom": [1.0,0.85,0.3], "bloom_intensity": 0.7}
+  }
+}
