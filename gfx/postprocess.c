@@ -18,6 +18,7 @@ typedef void   (WINAPI *PFNGLUNIFORM2F)(GLint, GLfloat, GLfloat);
 typedef void   (WINAPI *PFNGLUNIFORM3F)(GLint, GLfloat, GLfloat, GLfloat);
 typedef void   (WINAPI *PFNGLUNIFORM1I)(GLint, GLint);
 typedef void   (WINAPI *PFNGLGETSHADERIV)(GLuint, GLenum, GLint*);
+typedef void   (WINAPI *PFNGLGETPROGRAMIV)(GLuint, GLenum, GLint*);
 
 static PFNGLCREATESHADER   pglCreateShader;
 static PFNGLSHADERSOURCE   pglShaderSource;
@@ -32,12 +33,16 @@ static PFNGLUNIFORM2F      pglUniform2f;
 static PFNGLUNIFORM3F      pglUniform3f;
 static PFNGLUNIFORM1I      pglUniform1i;
 static PFNGLGETSHADERIV    pglGetShaderiv;
+static PFNGLGETPROGRAMIV   pglGetProgramiv;
 
 #ifndef GL_FRAGMENT_SHADER
 #define GL_FRAGMENT_SHADER 0x8B30
 #endif
 #ifndef GL_COMPILE_STATUS
 #define GL_COMPILE_STATUS  0x8B81
+#endif
+#ifndef GL_LINK_STATUS
+#define GL_LINK_STATUS     0x8B82
 #endif
 #ifndef GL_CLAMP_TO_EDGE
 #define GL_CLAMP_TO_EDGE   0x812F
@@ -73,6 +78,9 @@ static const char *FRAG_SRC =
 #define FLAG_HP_LOW   2u
 
 static int g_ready = -1;   /* -1 unknown, 0 failed, 1 ok */
+static int g_disabled = 0;      /* 1 = self-disabled after repeated GL errors -> passthrough */
+static int g_error_streak = 0;  /* consecutive frames with a lingering GL error */
+#define PP_MAX_ERROR_STREAK 60
 static GLuint g_prog = 0, g_tex = 0;
 static GLint u_tint, u_strength, u_desat, u_vignette, u_res, u_tex;
 static GLint u_flash, u_flash_i, u_shake, u_shake_off, u_bloom_c, u_bloom_i;
@@ -129,6 +137,7 @@ static int load_entrypoints(void) {
     LOAD(pglUniform3f, PFNGLUNIFORM3F, "glUniform3f");
     LOAD(pglUniform1i, PFNGLUNIFORM1I, "glUniform1i");
     LOAD(pglGetShaderiv, PFNGLGETSHADERIV, "glGetShaderiv");
+    LOAD(pglGetProgramiv, PFNGLGETPROGRAMIV, "glGetProgramiv");
     return 1;
 }
 
@@ -152,6 +161,9 @@ int pp_init(void) {
     if (!g_prog) return 0;
     pglAttachShader(g_prog, fs);
     pglLinkProgram(g_prog);
+    GLint linked = 0;
+    pglGetProgramiv(g_prog, GL_LINK_STATUS, &linked);
+    if (!linked) return 0;
     pglUseProgram(g_prog);
     u_tint = pglGetUniformLocation(g_prog, "tint");
     u_strength = pglGetUniformLocation(g_prog, "strength");
@@ -178,6 +190,7 @@ int pp_init(void) {
    in un unico pass a schermo intero via fragment shader.
    Salva/ripristina rigorosamente lo stato GL per non corrompere DCSS. */
 void pp_draw(const GfxState *st, int w, int h) {
+    if (g_disabled) return;                 /* self-disabled: passthrough permanente */
     if (!st || !st->master_enable || w <= 0 || h <= 0) return;
     if (!pp_init()) return;                 /* fallback: nessun effetto */
     float mi = st->master_intensity;
@@ -273,4 +286,26 @@ void pp_draw(const GfxState *st, int w, int h) {
     glMatrixMode(GL_PROJECTION); glPopMatrix();
     glMatrixMode(GL_MODELVIEW);  glPopMatrix();
     glPopAttrib();
+
+    /* Drena eventuali errori GL DOPO il ripristino dello stato, cosi' la
+       drain stessa non perturba il rendering. Se un errore persiste per
+       N frame consecutivi, il driver/lo stato e' probabilmente in una
+       condizione anomala: ci auto-disabilitiamo in modo permanente e
+       torniamo passthrough per tutti i frame successivi (mai crash). */
+    {
+        int frame_had_error = 0;
+        GLenum err;
+        while ((err = glGetError()) != GL_NO_ERROR) {
+            frame_had_error = 1;
+        }
+        if (frame_had_error) {
+            g_error_streak++;
+            if (g_error_streak >= PP_MAX_ERROR_STREAK) {
+                g_disabled = 1;
+                OutputDebugStringA("dcss-gfx: postprocess self-disabled after repeated GL errors; falling back to passthrough\n");
+            }
+        } else {
+            g_error_streak = 0;
+        }
+    }
 }

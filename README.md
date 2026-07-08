@@ -142,6 +142,133 @@ Findings from analyzing the stock binary — useful if you port this to another 
 
 ---
 
+## Graphics layer (video remaster)
+
+**Dynamic screen grading, tint/desaturation, vignette, and "juice" (flash/shake/bloom
+pulses) added on top of the audio remaster above — same idea, same no-recompile
+constraint, applied to the video path instead of the audio path.**
+
+The audio Director already knows the game's state (branch, HP, events) from the tokens
+described above. The graphics layer reuses that same brain: **one Director process now
+drives both audio and video**, writing the current visual target into a small shared-memory
+block that a second proxy DLL reads once per frame and renders as a full-screen
+post-process pass.
+
+### Architecture
+
+```
+                        crawl.exe (stock binary, unmodified)
+                                     │  wglMakeCurrent / glDraw* / ... (OpenGL calls)
+                                     │  gdi32!SwapBuffers(hdc)   ← frame presentation
+                                     ▼
+                     opengl32.dll  ◄── proxy DLL (this project, C / x86 / MSVC)
+                     │      │        forwards every OpenGL export to the real
+                     │      │        opengl32.dll (367 forwarders, generated);
+                     │      ▼        IAT-hooks gdi32!SwapBuffers in crawl.exe's
+                     │   real opengl32 (SysWOW64)   import table
+                     │
+                     ▼ (on every hooked SwapBuffers call)
+              dcss_gfx_state  (named shared-memory block, 108 bytes)
+                     ▲
+                     │  written once per Director tick
+            Director (Python) — same process as the audio mixer
+              VisualRouter: game token → VisualState → shared memory
+              config: director/visualmap.json (grades, modifiers, events)
+                     │
+                     ▼
+            postprocess.c (GLSL fragment shader, runs inside crawl.exe's
+            own GL context, right after the hooked SwapBuffers call):
+              capture back buffer → tint · desaturate · vignette
+              + flash / shake / bloom envelopes + unstable/low-HP/death pulses
+              → draw full-screen quad → let the real SwapBuffers present it
+```
+
+**Reverse-engineering note:** the Tiles binary does **not** call `wglSwapBuffers`
+directly — it presents frames through **`gdi32!SwapBuffers`**, which is how GDI
+generic-implementation OpenGL apps flip the back buffer. This is why the hook target
+is `gdi32.dll`'s import address table entry for `SwapBuffers`, not something inside
+`opengl32.dll` itself. `crawl.exe` imports `OPENGL32.dll` directly (which is what makes
+the classic DLL-proxy trick from the audio layer work again here), and IAT hooking
+`SwapBuffers` is the only reliable point to inject a post-process pass without patching
+the binary.
+
+### Repository layout (additions)
+
+```
+remaster/
+├── gfx/
+│   ├── gl_proxy.c        — OPENGL32.dll proxy: forwards every GL entry point,
+│   │                        installs the SwapBuffers IAT hook, drives the frame
+│   ├── gl_forwarders.h   — generated export-forwarding table (gen_forwarders.py)
+│   ├── iat_hook.c/.h     — import-table scanning + hook installation
+│   ├── postprocess.c/.h  — GLSL post-process pass (tint/desaturate/vignette/juice)
+│   ├── shmem.c/.h        — reads the dcss_gfx_state shared-memory block
+│   ├── shared_state.h    — GfxState struct (must match gfx_state.py's PACK_FORMAT)
+│   ├── build.ps1         — builds opengl32.dll (x86 MSVC)
+│   ├── deploy.ps1        — copies opengl32.dll next to crawl.exe
+│   └── harness/          — headless GL test harness (build.ps1 + gl_harness.c),
+│                            exercises pp_init()/pp_draw() without launching the game
+├── director/
+│   ├── gfx_state.py      — VisualState + PACK_FORMAT (Python mirror of GfxState)
+│   ├── visual_router.py  — VisualRouter: token → VisualState, master enable/intensity
+│   └── visualmap.json    — grades per branch, HP/unstable modifiers, event pulses
+```
+
+### Building & deploying
+
+> Same toolchain constraint as the audio proxy: **x86 MSVC**, because `crawl.exe` is x86.
+
+```powershell
+# Build the proxy DLL (needs a real 32-bit opengl32.dll from SysWOW64 on PATH/in the
+# VS dev prompt environment — build.ps1 sets this up)
+powershell -File gfx/build.ps1
+
+# Copy opengl32.dll next to crawl.exe (fails harmlessly if the game is running and
+# has the DLL locked — just close the game and re-run)
+powershell -File gfx/deploy.ps1
+
+# Optional: headless sanity check without launching the game
+powershell -File gfx/harness/build.ps1
+gfx/harness/gl_harness.exe        # should print "PP_INIT: OK"
+```
+
+The Director (`director/director.py`) is the same process already started by
+`play-remaster.ps1` for audio — no separate launcher for graphics.
+
+### Tuning
+
+All visual behavior — per-branch grades, tint colors, desaturation/vignette strength,
+HP-low and unstable-branch modifiers, event pulse colors/intensities — lives in
+**`director/visualmap.json`**. Edit the JSON and **restart the Director**; no rebuild of
+the DLL is needed, since the proxy only reads numbers out of shared memory and never
+embeds any game-state logic itself.
+
+### Kill-switch
+
+Set the environment variable **`DCSS_GFX_OFF=1`** before launching to disable the video
+remaster entirely (audio remaster is unaffected) — human-verified passthrough.
+
+### Graceful degradation
+
+Every failure mode falls back to the **stock, untouched rendering path** — never a crash:
+
+- **Director not running / shared memory absent** — `shmem_get()` returns `NULL`,
+  `pp_draw` never draws.
+- **`DCSS_GFX_OFF=1`** — proxy skips installing the hook / post-process entirely.
+- **`master.enable = 0` in `visualmap.json`** — `VisualRouter.__init__` writes
+  `master_enable = 0` into `VisualState`, and `pp_draw`'s first check
+  (`!st->master_enable`) early-returns before touching any GL state.
+- **Shader compile/link failure** — `pp_init()` checks `GL_COMPILE_STATUS` after
+  compiling the fragment shader and `GL_LINK_STATUS` after linking the program; either
+  failure returns 0 and `pp_draw` becomes a permanent no-op for that process.
+- **Repeated GL error** — after every draw, `pp_draw` drains `glGetError()` in a loop
+  (after state restore, so the drain itself can't perturb rendering). If a non-zero
+  error recurs for 60 consecutive frames, the module logs once via
+  `OutputDebugStringA` and sets a permanent `g_disabled` flag; every subsequent frame
+  is passthrough. This guards against a driver/state problem persisting indefinitely.
+
+---
+
 ## Credits & licensing
 
 - **Music** — Kevin MacLeod ([incompetech.com](https://incompetech.com)),

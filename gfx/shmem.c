@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <string.h>
 #include "shmem.h"
 
 static HANDLE  g_map = NULL;
