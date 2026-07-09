@@ -231,4 +231,90 @@ save("evt__step.wav",  pad(footstep(95, 0.30), 0.12))
 random.seed(81)
 save("evt__step2.wav", pad(footstep(88, 0.28), 0.12))
 
+# =========================================================================
+#  Suoni di pickup per classe oggetto (CC0)
+# =========================================================================
+
+# pergamena: fruscio cartaceo breve + micro-tick
+random.seed(90)
+save("evt__pickup_scroll.wav", mix([
+    pad(noise(0.10, 0.04, vol=0.32, lp=0.35), 0.16),
+    pad([0]*int(0.05*FR) + noise(0.05, 0.02, vol=0.22, lp=0.4), 0.16)]))
+
+# pozione: clink vetroso brillante + piccolo "tappo"
+random.seed(91)
+save("evt__pickup_potion.wav", mix([
+    pad(tone(1760, 0.10, 0.05, vol=0.35, partials=(1, 0.6, 0.3)), 0.20),
+    pad([0]*int(0.03*FR) + tone(2637, 0.08, 0.04, vol=0.22), 0.20),
+    pad([0]*int(0.11*FR) + tone(300, 0.05, 0.02, vol=0.18), 0.20)]))  # pop tappo
+
+# anello: ting metallico piccolo e brillante
+random.seed(92)
+save("evt__pickup_ring.wav", pad(metal(1320, 0.30, 0.12), 0.34))
+
+# amuleto: chime caldo (piu' grave, code lunghe)
+random.seed(93)
+save("evt__pickup_amulet.wav", mix([
+    pad(tone(880, 0.5, 0.35, vol=0.3, partials=(1, 0.5, 0.25)), 0.5),
+    pad([0]*int(0.06*FR) + tone(1174, 0.45, 0.3, vol=0.2, partials=(1, 0.5)), 0.5)]))
+
+# arma: "shing" di lama -> zing ascendente + ring metallico GRAVE e sostenuto.
+# Deliberatamente piu' basso e con coda lunga per non confondersi col jingle acuto dell'oro.
+random.seed(94)
+save("evt__pickup_weapon.wav", mix([
+    pad(sweep(400, 1700, 0.12, 0.05, vol=0.28), 0.44),          # zing della lama (tetto piu' basso)
+    pad([0]*int(0.05*FR) + metal(440, 0.34, 0.24), 0.44),       # ring grave con coda lunga
+    pad(noise(0.04, 0.012, vol=0.16, lp=0.7), 0.44)]))          # attrito iniziale
+
+# armatura: clangore pesante + componente cuoio + tonfo
+random.seed(95)
+save("evt__pickup_armour.wav", mix([
+    pad(metal(300, 0.4, 0.18), 0.34),
+    pad(noise(0.12, 0.05, vol=0.28, lp=0.3), 0.34),
+    pad([0]*int(0.02*FR) + tone(140, 0.10, 0.04, vol=0.3), 0.34)]))
+
+# dardi/proiettili: rattle di faretra (noise ritmico)
+random.seed(96)
+quiver = []
+for k in range(3):
+    quiver.append(pad([0]*int(0.05*k*FR) + noise(0.05, 0.02, vol=0.3, lp=0.6), 0.22))
+save("evt__pickup_missile.wav", mix(quiver))
+
+# bacchetta: blip shimmer magico (sweep ascendente + detune)
+random.seed(97)
+save("evt__pickup_wand.wav", mix([
+    pad(sweep(500, 1500, 0.16, 0.09, vol=0.28), 0.24),
+    pad(sweep(505, 1520, 0.16, 0.09, vol=0.18), 0.24)]))
+
+# libro: tonfo sordo di copertina + sfoglio di pagine
+random.seed(98)
+save("evt__pickup_book.wav", mix([
+    pad(tone(120, 0.12, 0.05, vol=0.4), 0.28),
+    pad([0]*int(0.10*FR) + noise(0.12, 0.05, vol=0.22, lp=0.3), 0.28)]))
+
+# bastone magico: knock legnoso + hum grave
+random.seed(99)
+save("evt__pickup_staff.wav", mix([
+    pad(wood_knock(150, 0.4), 0.30),
+    pad([0]*int(0.04*FR) + tone(90, 0.22, 0.12, vol=0.22, partials=(1, 0.5)), 0.30)]))
+
+# misc/evocable: pickup neutro brillante (due note)
+random.seed(100)
+save("evt__pickup_misc.wav", mix([
+    pad(tone(784, 0.12, 0.08, vol=0.35, partials=(1, 0.4)), 0.26),
+    pad([0]*int(0.09*FR) + tone(1175, 0.14, 0.09, vol=0.3, partials=(1, 0.4)), 0.26)]))
+
+# talismano: shimmer esoterico (accordo sospeso + vibrato)
+random.seed(101)
+save("evt__pickup_talisman.wav", mix([
+    pad(tone(659, 0.4, 0.28, vol=0.26, partials=(1, 0.5, 0.3), vibrato=0.015), 0.42),
+    pad(tone(988, 0.38, 0.26, vol=0.2, partials=(1, 0.5), vibrato=0.02), 0.42)]))
+
+# oro: jingle di monete (tintinnii metallici multipli)
+random.seed(102)
+coins = []
+for k, f in enumerate([2100, 2640, 1900, 2400, 2200]):
+    coins.append(pad([0]*int(0.03*k*FR) + tone(f, 0.10, 0.05, vol=0.22, partials=(1, 0.7, 0.4)), 0.34))
+save("evt__pickup_gold.wav", mix(coins))
+
 print("SFX sintetizzati in", OUT)

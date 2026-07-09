@@ -1,24 +1,20 @@
-# Graphics Remaster — SDD progress ledger
+# Pickup Sounds Per-Class — SDD progress ledger
 
-Plan: docs/superpowers/plans/2026-07-08-graphics-remaster.md
-Branch: feat/graphics-remaster
-Base commit: a2ea956
+Plan: docs/superpowers/plans/2026-07-09-pickup-sounds-per-class.md
+Branch: feat/pickup-sounds
+Base commit: 7d49b81
 
-- Task 1: complete (commit fc9d41f, review clean). Minor(final-review): opengl32.lib omitted (ok, verified); g_vp extern decl deferred to consumers.
-- Task 2: COMPLETE + HUMAN-VERIFIED @ checkpoint 1 (commit b83bb38, review clean). Red tint visible in-game, game stable, hook lands on gdi32!SwapBuffers. Milestone proven. Minor(final-review): kill-switch cached process-lifetime.
-- Task 3: complete (commit 9123fba, review clean — byte layout verified field-by-field). Minor(final-review): import-shim style; C header not yet compiled (size-assert will catch drift).
-- Task 4: complete (commit bc85651, review clean — shmem name match, NULL->passthrough, handle hygiene, push/pop balanced). Minor(final-review): shmem.c missing #include <string.h> (memcpy intrinsic, builds clean); redundant glBlendFunc in vignette block.
-- Task 5: complete (commit bc68f0b, review clean — PP_INIT OK, shader no-leak, glUniform2f added). Minor(final-review): per-frame glTexParameteri; no GL_LINK_STATUS check; harness g_tex/u_tex naming.
-- Task 6: complete (commit 09177c8, review clean — layering + event-seq verified, full suite 14/14). GAP: visualmap.json hp_low.vignette_tint + player_death.fade_black have no struct field (dropped) -> batch into Task 9 struct bump (flags + vignette_tint + fade_black).
-- Task 7: COMPLETE + HUMAN-VERIFIED @ checkpoint finale (commit 051a261). Grading live. 
-- Task 8: COMPLETE + HUMAN-VERIFIED @ checkpoint 3/finale (commit 7d57460 + fix ba2ef75). Juice: hit-flash + level-up gold confirmed live.
-- Task 9: COMPLETE + HUMAN-VERIFIED @ checkpoint finale (commit 805d0e5) + moderato tuning (c28fdd8). Red-vignette/death-fade/unstable + zone grades now visible. User: "mi pare funzioni tutto".
-- Task 10: complete (commit d1ec532, review clean — self-disable placed safely, link-status check, string.h, README accurate). ALL 10 TASKS DONE.
-
-NOTE: executing out of plan order — Task 6 (Python) before Tasks 4/5 (C render), which are gated on human checkpoint-1 (does the SwapBuffers hook land?).
-
-## Feedback utente (checkpoint 2/3)
-- AUDIO ok, juice ok: hit->flash grigio (letto come indicatore colpi, positivo), level_up->oro ok.
-- Non nota il GRADE CONTINUO (tinta zona + low-HP): tinte troppo scure/desature a bassa strength -> legge come dimming, non colore.
-- Stairs = solo-audio by design; grade cambia per-branch non per-livello (ok, chiarito).
-- TARGET TUNING scelto: "MODERATO / visibile" -> strength ~0.25-0.40, tinte piu' sature. Applicare in re-tune visualmap.json dopo Task 9 mechanics. Low-HP diventera' rosso pulsante (T9) => risolve il "non lo noto".
+- Task 1: complete (commit f017c0f, review clean — 13 filenames/seeds correct, verbatim, arity verified)
+- Task 2: complete (commit f4eea38, review clean — 13 tokens registered, JSON valid, real-Router test, 23/23). Minor(final): item pickup vol 0.55/0.6 < quaff/read 0.7 (design, sanity-check in-game); test pins op/group not filename.
+- Task 3: complete (commit 7bc22f6, review clean — pcall-guarded, diff logic correct, cap=2 dedup, new-game suppression, 13-token+fallback, generic rule removed). Minor(final): dead CLASS_SND["gold"] entry (theoretical double-play, gold not inv-listed); it.slot/it.quantity unwrapped (matches existing style); DEBUG_CLASS relies on director.log logging missing paths.
+- FINAL REVIEW (opus): clean tranne 1 Important (unguarded it.slot -> table-index throw fuori dal pcall, abbatteva ready()). FIXED in 553c549 (+ case-insensitive amulet, commento gold). Verificato sul diff.
+- Task 4: COMPLETE + HUMAN-VERIFIED @ checkpoint in-game. Due difetti trovati e corretti:
+  (1) BUG bloccante: la '}' di chiusura di CLASS_SND stava isolata a colonna 0 -> DCSS
+      la trattava come terminatore del blocco Lua e troncava il chunk a riga 72
+      ("unexpected symbol near <eof>"). ready() non partiva: niente pickup, niente switch
+      musica-per-branch (restava la musica del menu). FIX: brace attaccata alla riga
+      precedente, unico '}' a colonna 0 = terminatore r182.
+  (2) TUNING: pickup arma indistinguibile dall'oro (timbro metallico brillante sovrapposto
+      ~1900-2600 Hz). FIX: arma ridisegnata come shing con ring GRAVE e sostenuto
+      (sweep tetto 1700, metal(440) coda lunga) vs jingle acuto rapido dell'oro.
+      Utente: "ora e' distinto". Tutte le 13 categorie confermate live.

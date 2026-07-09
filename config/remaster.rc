@@ -19,7 +19,6 @@ sound += You read:evt__read.wav
 # --- momenti epici: PRIMA del pickup generico (DCSS gioca il primo match) ---
 sound += Orb of Zot:evt__orb.wav
 sound += rune of Zot:evt__rune.wav
-sound += You now have:evt__pickup.wav
 sound += open the door:evt__door.wav
 sound += open the gate:evt__door.wav
 sound += close the door:evt__door_close.wav
@@ -48,6 +47,52 @@ local last_xl = 0
 local last_name = nil
 local last_turns = -1
 local msg_this_turn = false
+
+-- === Pickup per classe oggetto: stato + mappa ===
+local last_inv = nil        -- slot(index) -> { qty = n, cls = string }
+local last_gold = nil
+local PICKUP_CAP = 2        -- max suoni di pickup per turno (anti-cacofonia)
+local DEBUG_CLASS = false   -- true = emette il nome classe grezzo su director.log (tuning)
+
+-- classe terse di item:class(true) -> token wav
+local CLASS_SND = {
+  ["weapon"]        = "evt__pickup_weapon",
+  ["armour"]        = "evt__pickup_armour",
+  ["missile"]       = "evt__pickup_missile",
+  ["scroll"]        = "evt__pickup_scroll",
+  ["potion"]        = "evt__pickup_potion",
+  ["wand"]          = "evt__pickup_wand",
+  ["book"]          = "evt__pickup_book",
+  ["magical staff"] = "evt__pickup_staff",
+  ["staff"]         = "evt__pickup_staff",
+  ["miscellaneous"] = "evt__pickup_misc",
+  ["misc"]          = "evt__pickup_misc",
+  ["talisman"]      = "evt__pickup_talisman",
+  -- oro ridondante (gestito dal delta you.gold()); "jewellery" gestita a parte (ring vs amulet).
+  -- NB: la '}' di chiusura NON deve stare da sola a colonna 0, o DCSS chiude qui l'intero blocco Lua.
+  ["gold"]          = "evt__pickup_gold" }
+
+local function play_pickup(token)
+  crawl.playsound("remaster/audio/sfx/" .. token .. ".wav")
+end
+
+-- token audio per un item (jewellery -> ring/amulet dal nome)
+local function token_for(it)
+  local okc, cls = pcall(function() return it:class(true) end)
+  if not okc or not cls then return "evt__pickup" end
+  if DEBUG_CLASS then
+    crawl.playsound("remaster/dbg/cls_" .. tostring(cls) .. ".wav")
+  end
+  if cls == "jewellery" then
+    local okn, nm = pcall(function() return it:name() end)
+    if okn and nm and string.find(string.lower(nm), "amulet") then
+      return "evt__pickup_amulet"
+    end
+    return "evt__pickup_ring"
+  end
+  return CLASS_SND[cls] or "evt__pickup"
+end
+
 -- Hook messaggi: alzato ogni volta che il gioco stampa una riga durante un'azione.
 -- Serve a distinguere una camminata (silenziosa) da attacco/cast/pozione/ecc.
 function c_message(text, channel)
@@ -63,6 +108,8 @@ function ready()
       last_branch = nil      -- forza il riavvio della musica del branch
       last_hp_band = nil
       last_turns = -1        -- niente passo spurio all'inizio di una nuova partita
+      last_inv = nil         -- non annunciare l'inventario iniziale come pickup
+      last_gold = nil
     end
     last_name = nm
     last_xl = xl
@@ -91,6 +138,45 @@ function ready()
     end
     last_turns = tn
   end
+
+  -- Pickup: diff inventario. Uno slot nuovo o con quantita' aumentata = raccolto.
+  local oki, inv = pcall(function() return items.inventory() end)
+  if oki and inv then
+    local cur = {}
+    for _, it in ipairs(inv) do
+      local slot = it.slot
+      local q = it.quantity or 1
+      if slot ~= nil then
+        cur[slot] = { qty = q, it = it }
+      end
+    end
+    if last_inv ~= nil then           -- salta il primo turno / nuova partita
+      local played, seen = 0, {}
+      for slot, info in pairs(cur) do
+        local prev = last_inv[slot]
+        if (prev == nil) or (info.qty > prev.qty) then
+          local token = token_for(info.it)
+          if not seen[token] and played < PICKUP_CAP then
+            play_pickup(token)
+            seen[token] = true
+            played = played + 1
+          end
+        end
+      end
+    end
+    last_inv = {}                     -- snapshot senza riferimenti agli item
+    for slot, info in pairs(cur) do last_inv[slot] = { qty = info.qty } end
+  end
+
+  -- Oro: non e' un item d'inventario, si guarda il delta.
+  local okg, g = pcall(function() return you.gold() end)
+  if okg and g then
+    if last_gold ~= nil and g > last_gold then
+      play_pickup("evt__pickup_gold")
+    end
+    last_gold = g
+  end
+
   msg_this_turn = false
 end
 }
