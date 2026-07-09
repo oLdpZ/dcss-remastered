@@ -37,7 +37,10 @@ EFFETTI SONORI
 Sintetizzati proceduralmente per questo progetto (remaster/tools/make_sfx.py).
 Rilasciati come CC0 / pubblico dominio (nessuna attribuzione richiesta).
 
-Eccezione (asset reale registrato):
+Eccezioni (asset reali registrati):
   Pickup pozione (audio/sfx/evt__pickup_potion.ogg)
     Fonte: Freesound (freesound_community, id 085594 / 35983), licenza CC0.
     Convertito in OGG 44.1 kHz e normalizzato per questo progetto.
+  Bere pozione / quaff (audio/sfx/evt__quaff.ogg)
+    Fonte: Freesound (yodguard, "potion-drink-4", id 540186), licenza CC0.
+    Convertito in OGG 44.1 kHz per questo progetto.

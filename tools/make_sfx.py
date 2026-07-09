@@ -83,9 +83,11 @@ save("evt__cast_spell.wav", mix([pad(sweep(320, 900, 0.42, 0.28, vol=0.35), 0.5)
                                  pad(tone(660, 0.5, 0.3, vol=0.2, partials=(1,0.5,0.3), vibrato=0.01), 0.5),
                                  pad(sweep(325, 910, 0.42, 0.28, vol=0.2), 0.5)]))  # detune shimmer
 
-save("evt__quaff.wav", mix([pad(sweep(700, 300, 0.10, 0.05, vol=0.4), 0.34),
-                            pad([0]*int(0.12*FR) + sweep(600, 260, 0.10, 0.05, vol=0.35), 0.34),
-                            pad(noise(0.30, 0.12, vol=0.12, lp=0.3), 0.34)]))
+# bere pozione (quaff): suono udibile = asset reale registrato (CC0, Freesound) ->
+# audio/sfx/evt__quaff.ogg, mappato in soundmap.json (vedi CREDITS.txt).
+# Qui solo lo STUB SILENZIOSO evt__quaff.wav: la regola "sound += You drink:evt__quaff.wav"
+# lo usa come trigger, il proxy lo intercetta e il Director riproduce l'OGG.
+save("evt__quaff.wav", [0.0] * int(0.02 * FR))
 
 save("evt__read.wav", mix([pad(noise(0.06, 0.02, vol=0.4, lp=0.4), 0.28),
                            pad([0]*int(0.10*FR) + noise(0.06, 0.02, vol=0.35, lp=0.4), 0.28),

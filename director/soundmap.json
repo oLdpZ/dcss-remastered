@@ -4,7 +4,7 @@
     "evt__melee_hit": {"files": ["evt__melee_hit.wav", "evt__melee_hit2.wav", "evt__melee_hit3.wav"], "volume": 0.8, "group": "combat"},
     "evt__ranged":    {"files": ["evt__ranged.wav"], "volume": 0.8, "group": "combat"},
     "evt__cast_spell":{"files": ["evt__cast_spell.wav"], "volume": 0.8, "group": "magic"},
-    "evt__quaff":     {"files": ["evt__quaff.wav"], "volume": 0.7, "group": "item"},
+    "evt__quaff":     {"files": ["evt__quaff.ogg"], "volume": 0.7, "group": "item"},
     "evt__read":      {"files": ["evt__read.wav"], "volume": 0.7, "group": "item"},
     "evt__pickup":    {"files": ["evt__pickup.wav"], "volume": 0.6, "group": "item"},
     "evt__pickup_weapon":   {"files": ["evt__pickup_weapon.wav"],   "volume": 0.6,  "group": "item"},
