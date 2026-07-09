@@ -89,9 +89,11 @@ save("evt__cast_spell.wav", mix([pad(sweep(320, 900, 0.42, 0.28, vol=0.35), 0.5)
 # lo usa come trigger, il proxy lo intercetta e il Director riproduce l'OGG.
 save("evt__quaff.wav", [0.0] * int(0.02 * FR))
 
-save("evt__read.wav", mix([pad(noise(0.06, 0.02, vol=0.4, lp=0.4), 0.28),
-                           pad([0]*int(0.10*FR) + noise(0.06, 0.02, vol=0.35, lp=0.4), 0.28),
-                           pad([0]*int(0.19*FR) + noise(0.05, 0.02, vol=0.3, lp=0.4), 0.28)]))
+# leggere pergamena (read): suono udibile = asset reale registrato (CC0, Freesound) ->
+# audio/sfx/evt__read.ogg, mappato in soundmap.json (vedi CREDITS.txt).
+# Qui solo lo STUB SILENZIOSO evt__read.wav: la regola "sound += You read:evt__read.wav"
+# lo usa come trigger, il proxy lo intercetta e il Director riproduce l'OGG.
+save("evt__read.wav", [0.0] * int(0.02 * FR))
 
 save("evt__pickup.wav", mix([pad(tone(1046, 0.12, 0.09, vol=0.4, partials=(1,0.4)), 0.30),
                              pad([0]*int(0.09*FR) + tone(1568, 0.16, 0.11, vol=0.4, partials=(1,0.4)), 0.30)]))

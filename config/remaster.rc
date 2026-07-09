@@ -15,7 +15,8 @@ sound += hits you:evt__hurt.wav
 sound += You block:evt__block.wav
 sound += misses you:evt__miss_enemy.wav
 sound += You drink:evt__quaff.wav
-sound += You read:evt__read.wav
+# "You read" NON funziona: leggendo, DCSS stampa "As you read..." (you minuscolo).
+# La lettura pergamena e' gestita in c_message (match case-insensitive read+scroll).
 # --- momenti epici: PRIMA del pickup generico (DCSS gioca il primo match) ---
 sound += Orb of Zot:evt__orb.wav
 sound += rune of Zot:evt__rune.wav
@@ -113,6 +114,12 @@ function c_message(text, channel)
   -- Lettura ("You read...") e vista ("You see here a scroll") NON hanno " - " -> no falsi positivi.
   if string.find(lt, " - ", 1, true) and string.find(lt, "scroll", 1, true) then
     crawl.playsound("remaster/audio/sfx/evt__pickup_scroll.wav")
+  end
+  -- Lettura pergamena: il messaggio e' "As you read the scroll of X..." (you minuscolo),
+  -- quindi la vecchia regola statica "You read" non lo prendeva mai. Match case-insensitive
+  -- "read" + "scroll"; la riga di pickup ha " - " ma non "read" -> restano distinte.
+  if string.find(lt, "read", 1, true) and string.find(lt, "scroll", 1, true) then
+    crawl.playsound("remaster/audio/sfx/evt__read.wav")
   end
 end
 function ready()

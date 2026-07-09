@@ -3,6 +3,7 @@ audio/sfx/*.ogg
 # eccezione: asset reali registrati (non rigenerabili da make_sfx.py), vanno versionati
 !audio/sfx/evt__pickup_potion.ogg
 !audio/sfx/evt__quaff.ogg
+!audio/sfx/evt__read.ogg
 audio/music/*
 audio/ambience/*
 audio/markers/*.wav

@@ -44,3 +44,6 @@ Eccezioni (asset reali registrati):
   Bere pozione / quaff (audio/sfx/evt__quaff.ogg)
     Fonte: Freesound (yodguard, "potion-drink-4", id 540186), licenza CC0.
     Convertito in OGG 44.1 kHz per questo progetto.
+  Leggere pergamena / read (audio/sfx/evt__read.ogg)
+    Fonte: Freesound (vittemacop, "paper-crumpling ... parchment-crinkle", id 478076), licenza CC0.
+    Convertito in OGG 44.1 kHz e normalizzato per questo progetto.
