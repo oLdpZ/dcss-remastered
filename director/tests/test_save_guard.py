@@ -142,9 +142,15 @@ def test_resolve_saves_dir_env(monkeypatch, tmp_path):
 def test_resolve_saves_dir_dev_fallback(monkeypatch):
     from save_guard import resolve_saves_dir
     monkeypatch.delenv("DCSS_SAVES_DIR", raising=False)
-    here = os.path.normpath("/game/stone_soup-tiles-0.34/remaster/director")
-    got = os.path.normpath(resolve_saves_dir(here))
-    assert got == os.path.normpath("/game/stone_soup-tiles-0.34/saves")
+    here = os.path.abspath(os.path.join("game", "stone_soup-tiles-0.34", "remaster", "director"))
+    got = resolve_saves_dir(here)
+    expected = os.path.abspath(os.path.join("game", "stone_soup-tiles-0.34", "saves"))
+    assert got == expected
+
+def test_run_forever_returns_immediately_when_disabled(tmp_path):
+    saves, ckpt = _mk(tmp_path)
+    g = SaveGuard(saves, ckpt, {"enabled": False})
+    g.run_forever()   # must return at once; if it looped, the test would hang
 
 def test_load_config_defaults_when_missing(tmp_path):
     from save_guard import load_saveguard_config, DEFAULT_CONFIG

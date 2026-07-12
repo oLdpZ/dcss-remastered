@@ -137,12 +137,7 @@ def resolve_saves_dir(here):
     env = os.environ.get("DCSS_SAVES_DIR")
     if env:
         return env
-    # Build the path relative to here, then resolve
-    result_path = os.path.join(here, "..", "..", "saves")
-    # Normalize the path; use abspath only if input was already absolute
-    if os.path.isabs(here):
-        return os.path.abspath(result_path)
-    return os.path.normpath(result_path)
+    return os.path.abspath(os.path.join(here, "..", "..", "saves"))
 
 
 def load_saveguard_config(here):
