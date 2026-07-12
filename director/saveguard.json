@@ -1,7 +1,9 @@
 {
   "enabled": true,
-  "keep": 5,
+  "keep": 10,
   "poll_seconds": 1.5,
+  "min_snapshot_interval_seconds": 20,
   "require_death_token": true,
-  "restore_window_seconds": 30
+  "restore_window_seconds": 30,
+  "debug": false
 }

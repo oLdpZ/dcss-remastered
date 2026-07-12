@@ -1,6 +1,53 @@
 # Save-Lock Hook — sblocca la lettura del save per i checkpoint per-piano — Design
 
 **Data:** 2026-07-12
+**Stato:** implementato e validato in-game (spike riuscito)
+
+## ⚠️ Revisione post-spike — la root cause era DIVERSA da quella ipotizzata
+
+L'ipotesi iniziale (sotto) era che DCSS aprisse il `.cs` con una **share mode** che negava
+la lettura, da correggere con un hook su `CreateFileW` che aggiungeva `FILE_SHARE_READ`.
+**Lo spike ha dimostrato che era sbagliata.** Evidenza raccolta (build diagnostica):
+
+- Il gioco apre gia' il save con `dwShareMode = FILE_SHARE_READ | FILE_SHARE_WRITE` (0x3):
+  la condivisione NON e' il problema. L'hook su `CreateFileW` era un no-op.
+- La vera barriera e' un **byte-range lock**: DCSS chiama `LockFileEx` sul contenuto del
+  `.cs`. Un altro processo che legge quei byte prende `ERROR_LOCK_VIOLATION` (33), anche
+  dopo un'open riuscita. Confermato: open OK + `GetFileSize` OK, ma `ReadFile` -> err 33
+  sul file caricato; un `.cs` non caricato si legge senza problemi.
+- Inoltre la `open('rb')` di Python fallisce (err 13) perche' non condivide la scrittura,
+  in conflitto con l'handle di scrittura del gioco.
+
+**Soluzione effettiva (implementata):**
+1. **Hook nativo su `LockFile`/`LockFileEx`/`UnlockFile`/`UnlockFileEx`** (crawl.exe le
+   importa da kernel32): reso **no-op** (ritorna TRUE) SOLO per gli handle di file `*.cs`,
+   identificati via `GetFinalPathNameByHandleW`. Cosi' il save non viene lockato e il
+   Director puo' leggerlo. `file_hook.c`.
+2. **Lato Director:** `read_file_shared()` apre il `.cs` con `CreateFileW` e share
+   `READ|WRITE|DELETE` (via ctypes), cosi' l'open non va in conflitto con l'handle di
+   scrittura del gioco. Rimpiazza la `open('rb')` in `_snapshot`. `save_guard.py`.
+
+**Gotcha tecnici scoperti nello spike (tutti a caro prezzo):**
+- **kernel32 vs kernelbase:** crawl.exe importa da `KERNEL32.dll`, ma il C runtime (msvcrt)
+  importa da un API-set che risolve a `kernelbase.dll` -> indirizzo DIVERSO. Un hook che
+  cerca solo l'indirizzo di kernel32 manca le chiamate del CRT. Vanno patchati **entrambi**
+  gli indirizzi negli IAT dei moduli chiamanti.
+- **Ricorsione infinita:** patchare l'indirizzo kernelbase anche negli IAT dei moduli
+  d'implementazione (kernel32/kernelbase) fa si' che la nostra chiamata "reale" ripassi da
+  uno slot patchato -> hook->hook->stack overflow->crash. Fix: chiamare l'impl. reale
+  (kernelbase) **direttamente** e **saltare** i moduli kernel32/kernelbase/ntdll nel patch.
+- DCSS usa **`LockFileEx`** (non `LockFile`) per il save (verificato dai log dell'hook).
+
+**Ritenzione (deciso post-spike):** DCSS riscrive il save molto spesso durante il gioco,
+quindi "ultimi 5" copriva pochi secondi. Aggiunto un **throttle** (`min_snapshot_interval_seconds`,
+default 20) + `keep` default 10: al massimo uno snapshot ogni ~20s per personaggio ->
+diversi minuti di storia, ripristino ad al massimo ~20s prima della morte.
+
+---
+
+## Design originale (ipotesi CreateFile-share, poi smentita) — mantenuto per storia
+
+**Data:** 2026-07-12
 **Stato:** approvato, spike-first
 
 ## Contesto / root cause
