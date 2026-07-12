@@ -4,6 +4,7 @@
 #include "iat_hook.h"
 #include "postprocess.h"
 #include "shmem.h"
+#include "file_hook.h"
 
 /* Sovrascriviamo glViewport per conoscere la risoluzione del framebuffer.
    Nome decorato __stdcall: 4 argomenti da 4 byte -> @16. */
@@ -37,6 +38,9 @@ static void install_hook_once(void) {
     g_hook_tried = 1;
     void *orig = iat_hook("gdi32.dll", "SwapBuffers", (void *)hook_SwapBuffers);
     if (orig) g_real_swap = (SwapBuffers_t)orig;
+    /* Save-lock hook: rende leggibili i *.cs mentre il gioco li tiene aperti, cosi'
+       il SaveGuard puo' fare i checkpoint per-piano. Indipendente dal gfx. */
+    file_hook_install();
 }
 
 static HMODULE real_gl(void) {

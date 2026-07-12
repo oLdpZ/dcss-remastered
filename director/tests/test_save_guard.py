@@ -54,7 +54,7 @@ def test_new_content_makes_new_snapshot(tmp_path):
     saves, ckpt = _mk(tmp_path)
     p = os.path.join(saves, "Hero.cs")
     _write(p, b"level1")
-    g = SaveGuard(saves, ckpt)
+    g = SaveGuard(saves, ckpt, {"min_snapshot_interval_seconds": 0})
     g.poll_once(); g.poll_once()               # 0000
     _write(p, b"level2xx")                       # contenuto diverso (size diversa)
     g.poll_once(); g.poll_once()               # 0001
@@ -63,7 +63,7 @@ def test_new_content_makes_new_snapshot(tmp_path):
 def test_rotation_keeps_last_n(tmp_path):
     saves, ckpt = _mk(tmp_path)
     p = os.path.join(saves, "Hero.cs")
-    g = SaveGuard(saves, ckpt, {"keep": 3})
+    g = SaveGuard(saves, ckpt, {"keep": 3, "min_snapshot_interval_seconds": 0})
     for i in range(6):
         _write(p, b"content-%d" % i)   # contenuto sempre diverso
         g.poll_once(); g.poll_once()   # forza snapshot
@@ -195,3 +195,40 @@ def test_redeletion_after_restore_is_restored_again(tmp_path):
     os.remove(p)                           # game re-deletes before it stabilizes
     assert g.poll_once()["restored"] == ["Hero"]   # restored again
     assert os.path.exists(p)
+
+def test_throttle_limits_snapshot_rate(tmp_path):
+    # DCSS riscrive il save spesso: con throttle facciamo al massimo uno snapshot
+    # ogni `min_snapshot_interval_seconds` per personaggio.
+    saves, ckpt = _mk(tmp_path)
+    p = os.path.join(saves, "Hero.cs")
+    clock = FakeClock()
+    g = SaveGuard(saves, ckpt, {"min_snapshot_interval_seconds": 20}, clock=clock)
+    _write(p, b"a"); g.poll_once(); g.poll_once()          # 0000 (primo: consentito)
+    assert _snaps(ckpt, "Hero") == ["0000.cs"]
+    _write(p, b"bb"); g.poll_once(); g.poll_once()         # entro 20s -> throttled
+    assert _snaps(ckpt, "Hero") == ["0000.cs"]
+    clock.t += 25                                           # oltre l'intervallo
+    _write(p, b"ccc"); g.poll_once(); g.poll_once()        # ora consentito -> 0001
+    assert _snaps(ckpt, "Hero") == ["0000.cs", "0001.cs"]
+
+def test_read_failure_does_not_consume_change(tmp_path, monkeypatch):
+    # Se la lettura fallisce (es. gioco senza l'hook), il cambiamento NON va perso:
+    # _known non avanza e si riprova al poll successivo (quando la lettura riesce).
+    import save_guard
+    saves, ckpt = _mk(tmp_path)
+    p = os.path.join(saves, "Hero.cs"); _write(p, b"data")
+    g = SaveGuard(saves, ckpt, {"min_snapshot_interval_seconds": 0})
+    calls = {"n": 0}
+    real = save_guard.read_file_shared
+    def flaky(path):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise OSError("locked")
+        return real(path)
+    monkeypatch.setattr(save_guard, "read_file_shared", flaky)
+    g.poll_once(); r = g.poll_once()       # stabile -> _snapshot legge -> 1a volta FAIL
+    assert r["snapshotted"] == []
+    assert _snaps(ckpt, "Hero") == []      # nessuno snapshot
+    r2 = g.poll_once()                      # riprova (known non avanzato) -> 2a volta OK
+    assert r2["snapshotted"] == ["Hero"]
+    assert _snaps(ckpt, "Hero") == ["0000.cs"]

@@ -1,11 +1,55 @@
-import os, shutil, hashlib, json, time
+import os, sys, shutil, hashlib, json, time
+
+
+def read_file_shared(path):
+    """Legge un file aprendolo con condivisione piena (READ|WRITE|DELETE), cosi' si
+    puo' leggere un save che DCSS tiene aperto con un handle di scrittura. La open()
+    normale di Python non condivide la scrittura -> fallirebbe con 'Permission denied'.
+    Su piattaforme non-Windows (o test) ripiega su open()."""
+    if sys.platform != "win32":
+        with open(path, "rb") as f:
+            return f.read()
+    import ctypes
+    from ctypes import wintypes
+    k = ctypes.WinDLL("kernel32", use_last_error=True)
+    k.CreateFileW.restype = wintypes.HANDLE
+    k.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                              ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD,
+                              wintypes.HANDLE]
+    k.ReadFile.restype = wintypes.BOOL
+    k.ReadFile.argtypes = [wintypes.HANDLE, ctypes.c_void_p, wintypes.DWORD,
+                           ctypes.POINTER(wintypes.DWORD), ctypes.c_void_p]
+    k.CloseHandle.argtypes = [wintypes.HANDLE]
+    GENERIC_READ = 0x80000000
+    SHARE = 0x1 | 0x2 | 0x4          # FILE_SHARE_READ | WRITE | DELETE
+    OPEN_EXISTING = 3
+    INVALID = ctypes.c_void_p(-1).value
+    h = k.CreateFileW(path, GENERIC_READ, SHARE, None, OPEN_EXISTING, 0x80, None)
+    if not h or h == INVALID:
+        raise OSError("CreateFileW failed (err %d): %s" % (ctypes.get_last_error(), path))
+    try:
+        out = []
+        buf = ctypes.create_string_buffer(1 << 16)
+        rd = wintypes.DWORD(0)
+        while True:
+            if not k.ReadFile(h, buf, 1 << 16, ctypes.byref(rd), None):
+                raise OSError("ReadFile failed (err %d): %s" % (ctypes.get_last_error(), path))
+            if rd.value == 0:
+                break
+            out.append(buf.raw[:rd.value])
+        return b"".join(out)
+    finally:
+        k.CloseHandle(h)
+
 
 DEFAULT_CONFIG = {
     "enabled": True,
-    "keep": 5,
+    "keep": 10,
     "poll_seconds": 1.5,
+    "min_snapshot_interval_seconds": 20,
     "require_death_token": True,
     "restore_window_seconds": 30,
+    "debug": False,
 }
 
 class SaveGuard:
@@ -18,8 +62,14 @@ class SaveGuard:
         self._known = {}      # name -> (mtime, size) stato stabile gia' snapshottato
         self._pending = {}    # name -> (mtime, size) visto ma non ancora stabile
         self._last_hash = {}  # name -> hash dell'ultimo snapshot
+        self._last_snap_at = {}  # name -> clock time dell'ultimo snapshot (throttle)
         self._vanished = {}   # name -> clock time in cui il .cs e' sparito (morte)
         self._armed_at = None
+        self._debug = bool(self.cfg.get("debug", False))
+
+    def _dbg(self, msg):
+        if self._debug:
+            self._log(msg)
 
     # --- API pubblica ---
     def arm_restore(self):
@@ -55,18 +105,36 @@ class SaveGuard:
                 # Finestra scaduta senza ripristino riuscito -> smetti di seguirlo.
                 del self._vanished[name]
 
-        # 3. Snapshot dei file nuovi/cambiati (debounce + dedup invariati).
+        # 3. Snapshot dei file nuovi/cambiati (debounce + dedup + throttle).
+        interval = float(self.cfg.get("min_snapshot_interval_seconds", 20))
         for name, meta in current.items():
             if self._known.get(name) == meta:
                 continue
-            if self._pending.get(name) == meta:
-                if self._snapshot(name):
-                    report["snapshotted"].append(name)
-                    self._log("[saveguard] checkpoint " + name)
-                self._known[name] = meta
-                self._pending.pop(name, None)
-            else:
+            self._dbg("[saveguard][diag] cambio visto %s known=%r pending=%r new=%r"
+                      % (name, self._known.get(name), self._pending.get(name), meta))
+            if self._pending.get(name) != meta:      # non ancora stabile: attendi
                 self._pending[name] = meta
+                continue
+            # Stabile per un ciclo. Throttle: al massimo uno snapshot ogni `interval`s
+            # per personaggio (DCSS riscrive il save spesso; teniamo storia diradata).
+            last = self._last_snap_at.get(name)
+            if last is not None and (self._clock() - last) < interval:
+                self._known[name] = meta          # consuma il cambiamento senza snapshot
+                self._pending.pop(name, None)
+                continue
+            try:
+                snapped = self._snapshot(name)
+            except OSError as e:
+                # Lettura fallita (es. gioco avviato senza l'hook che sblocca il lock):
+                # NON avanzare _known -> riprova al prossimo poll.
+                self._dbg("[saveguard][diag] read FAIL %s: %r" % (name, e))
+                continue
+            if snapped:
+                self._last_snap_at[name] = self._clock()
+                report["snapshotted"].append(name)
+                self._log("[saveguard] checkpoint " + name)
+            self._known[name] = meta
+            self._pending.pop(name, None)
         return report
 
     # --- interni ---
@@ -88,11 +156,7 @@ class SaveGuard:
 
     def _snapshot(self, name):
         src = os.path.join(self.saves_dir, name + ".cs")
-        try:
-            with open(src, "rb") as f:
-                data = f.read()
-        except OSError:
-            return False
+        data = read_file_shared(src)   # rilancia OSError: gestito dal chiamante
         h = hashlib.sha1(data).hexdigest()
         if self._last_hash.get(name) == h:
             return False
