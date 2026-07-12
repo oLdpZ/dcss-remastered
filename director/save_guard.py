@@ -11,7 +11,7 @@ def read_file_shared(path):
             return f.read()
     import ctypes
     from ctypes import wintypes
-    k = ctypes.windll.kernel32
+    k = ctypes.WinDLL("kernel32", use_last_error=True)
     k.CreateFileW.restype = wintypes.HANDLE
     k.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
                               ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD,
@@ -26,14 +26,14 @@ def read_file_shared(path):
     INVALID = ctypes.c_void_p(-1).value
     h = k.CreateFileW(path, GENERIC_READ, SHARE, None, OPEN_EXISTING, 0x80, None)
     if not h or h == INVALID:
-        raise OSError("CreateFileW failed (err %d): %s" % (ctypes.GetLastError(), path))
+        raise OSError("CreateFileW failed (err %d): %s" % (ctypes.get_last_error(), path))
     try:
         out = []
         buf = ctypes.create_string_buffer(1 << 16)
         rd = wintypes.DWORD(0)
         while True:
             if not k.ReadFile(h, buf, 1 << 16, ctypes.byref(rd), None):
-                raise OSError("ReadFile failed (err %d): %s" % (ctypes.GetLastError(), path))
+                raise OSError("ReadFile failed (err %d): %s" % (ctypes.get_last_error(), path))
             if rd.value == 0:
                 break
             out.append(buf.raw[:rd.value])

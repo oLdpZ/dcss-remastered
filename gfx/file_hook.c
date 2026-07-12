@@ -7,7 +7,9 @@
    intercettiamo Lock/UnlockFile[Ex] e le rendiamo no-op (ritornano TRUE) SOLO per gli
    handle che si riferiscono a un file *.cs, cosi' il Director puo' leggere il save e
    fare i checkpoint per-piano. Il gioco (istanza singola) mantiene comunque accesso di
-   fatto esclusivo. Vedi file_hook.h. [BUILD DIAGNOSTICA: logga su filehook.log.] */
+   fatto esclusivo; disabilitare il lock rimuove la protezione anti-istanze-multiple di
+   DCSS (accettabile: il launcher avvia una sola istanza). Vedi file_hook.h. Logging
+   diagnostico su filehook.log solo con env DCSS_SAVEHOOK_DEBUG. */
 
 typedef BOOL  (WINAPI *LockFile_t)(HANDLE, DWORD, DWORD, DWORD, DWORD);
 typedef BOOL  (WINAPI *LockFileEx_t)(HANDLE, DWORD, DWORD, DWORD, DWORD, LPOVERLAPPED);
@@ -24,6 +26,7 @@ static UnlockFileEx_t g_realUnlockFileEx = NULL;
 static GFPNBH_t       g_gfpnbh           = NULL;
 static CreateFileW_t  g_realW            = NULL;  /* solo per il logger diagnostico */
 static int g_off = -1;
+static HMODULE g_self = NULL;   /* il modulo del proxy: da NON patchare (anti-ricorsione) */
 
 static int save_off(void) {
     if (g_off < 0) g_off = GetEnvironmentVariableA("DCSS_SAVEHOOK_OFF", NULL, 0) ? 1 : 0;
@@ -76,6 +79,9 @@ static BOOL WINAPI hook_LockFile(HANDLE h, DWORD a, DWORD b, DWORD c, DWORD d) {
 
 static BOOL WINAPI hook_LockFileEx(HANDLE h, DWORD fl, DWORD r, DWORD a, DWORD b,
                                    LPOVERLAPPED o) {
+    /* No-op sul .cs: ritorniamo TRUE (successo sincrono). DCSS usa un handle sincrono
+       per il save (verificato), quindi l'OVERLAPPED non va segnalato; se un giorno usasse
+       un handle FILE_FLAG_OVERLAPPED andrebbe segnalato l'evento in `o`. */
     if (!save_off() && handle_is_cs(h)) { hooklog("LockFileEx .cs -> no-op\r\n"); return TRUE; }
     return g_realLockFileEx ? g_realLockFileEx(h, fl, r, a, b, o)
                             : LockFileEx(h, fl, r, a, b, o);
@@ -129,7 +135,8 @@ static int hook_func(HMODULE *mods, DWORD n, HMODULE k32, HMODULE kbase, HMODULE
     DWORD i;
     int tot = 0;
     for (i = 0; i < n; i++) {
-        if (mods[i] == k32 || mods[i] == kbase || mods[i] == ntdll) continue;
+        if (mods[i] == k32 || mods[i] == kbase || mods[i] == ntdll || mods[i] == g_self)
+            continue;
         if (k32addr) tot += patch_module(mods[i], k32addr, repl);
         if (kbaddr && kbaddr != k32addr) tot += patch_module(mods[i], kbaddr, repl);
     }
@@ -159,6 +166,7 @@ void file_hook_install(void) {
     k32 = GetModuleHandleA("kernel32.dll");
     kbase = GetModuleHandleA("kernelbase.dll");
     ntdll = GetModuleHandleA("ntdll.dll");
+    g_self = GetModuleHandleA("opengl32.dll");   /* questo proxy: escluso dal patch */
     if (!k32) return;
 
     /* Per il logger e per identificare gli handle .cs. */
@@ -167,6 +175,10 @@ void file_hook_install(void) {
     if (!g_gfpnbh && kbase) g_gfpnbh = (GFPNBH_t)GetProcAddress(kbase, "GetFinalPathNameByHandleW");
 
     if (!EnumProcessModules(GetCurrentProcess(), mods, sizeof(mods), &cb)) return;
+    /* Clamp: se il processo ha piu' di 512 moduli, `cb` e' la dimensione NECESSARIA
+       (non quella scritta) -> senza clamp leggeremmo mods[] oltre il buffer. Meglio
+       ignorare i moduli in eccesso (safe) che una lettura OOB. */
+    if (cb > (DWORD)sizeof(mods)) cb = (DWORD)sizeof(mods);
     n = cb / (DWORD)sizeof(HMODULE);
 
     tL  = install_one(mods, n, k32, kbase, ntdll, "LockFile",     (void *)hook_LockFile,     (void **)&g_realLockFile);
