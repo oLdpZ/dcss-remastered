@@ -26,6 +26,12 @@ class SaveGuard:
     def poll_once(self):
         report = {"snapshotted": [], "restored": []}
         current = self._scan()
+        for name in list(self._known):        # rileva cancellazioni
+            if name not in current:
+                if self._maybe_restore(name):
+                    report["restored"].append(name)
+                del self._known[name]
+                self._pending.pop(name, None)
         for name, meta in current.items():
             if self._known.get(name) == meta:
                 continue
@@ -90,3 +96,27 @@ class SaveGuard:
                 os.remove(os.path.join(d, fn))
             except OSError:
                 pass
+
+    def _restore_allowed(self):
+        if not self.cfg.get("require_death_token", True):
+            return True
+        if self._armed_at is None:
+            return False
+        return (self._clock() - self._armed_at) <= float(
+            self.cfg.get("restore_window_seconds", 30))
+
+    def _maybe_restore(self, name):
+        if not self._restore_allowed():
+            return False
+        d = os.path.join(self.checkpoints_dir, name)
+        if not os.path.isdir(d):
+            return False
+        snaps = sorted(fn for fn in os.listdir(d)
+                       if fn.endswith(".cs") and fn[:-3].isdigit())
+        if not snaps:
+            return False
+        latest = os.path.join(d, snaps[-1])
+        dst = os.path.join(self.saves_dir, name + ".cs")
+        shutil.copy2(latest, dst)
+        self._armed_at = None                 # disarma dopo il ripristino
+        return True

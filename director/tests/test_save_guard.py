@@ -15,6 +15,17 @@ def _snaps(ckpt, name):
     d = os.path.join(ckpt, name)
     return sorted(f for f in os.listdir(d)) if os.path.isdir(d) else []
 
+class FakeClock:
+    def __init__(self): self.t = 1000.0
+    def __call__(self): return self.t
+
+def _snapshot_hero(saves, ckpt, data=b"level1", keep=5):
+    p = os.path.join(saves, "Hero.cs")
+    _write(p, data)
+    g = SaveGuard(saves, ckpt, {"keep": keep}, clock=FakeClock())
+    g.poll_once(); g.poll_once()      # crea 0000
+    return g, p
+
 def test_snapshot_created_after_debounce(tmp_path):
     saves, ckpt = _mk(tmp_path)
     _write(os.path.join(saves, "Hero.cs"), b"level1")
@@ -70,3 +81,43 @@ def test_rotation_orders_numerically_past_9999(tmp_path):
     g = SaveGuard(saves, ckpt, {"keep": 1})
     g._rotate(d)
     assert _snaps(ckpt, "Hero") == ["10000.cs"]   # newest survives
+
+def test_restore_when_armed(tmp_path):
+    saves, ckpt = _mk(tmp_path)
+    g, p = _snapshot_hero(saves, ckpt)
+    g.arm_restore()
+    os.remove(p)                       # morte: DCSS cancella il .cs
+    r = g.poll_once()
+    assert r["restored"] == ["Hero"]
+    assert os.path.exists(p)
+    with open(p, "rb") as f:
+        assert f.read() == b"level1"
+
+def test_no_restore_when_not_armed(tmp_path):
+    saves, ckpt = _mk(tmp_path)
+    g, p = _snapshot_hero(saves, ckpt)   # require_death_token=True di default
+    os.remove(p)
+    r = g.poll_once()
+    assert r["restored"] == []
+    assert not os.path.exists(p)
+
+def test_no_restore_after_window_expired(tmp_path):
+    saves, ckpt = _mk(tmp_path)
+    clock = FakeClock()
+    p = os.path.join(saves, "Hero.cs"); _write(p, b"level1")
+    g = SaveGuard(saves, ckpt, {"restore_window_seconds": 30}, clock=clock)
+    g.poll_once(); g.poll_once()
+    g.arm_restore()                       # armato a t=1000
+    clock.t += 31                         # oltre la finestra
+    os.remove(p)
+    assert g.poll_once()["restored"] == []
+    assert not os.path.exists(p)
+
+def test_fallback_restore_without_token(tmp_path):
+    saves, ckpt = _mk(tmp_path)
+    p = os.path.join(saves, "Hero.cs"); _write(p, b"level1")
+    g = SaveGuard(saves, ckpt, {"require_death_token": False}, clock=FakeClock())
+    g.poll_once(); g.poll_once()
+    os.remove(p)                          # nessun arm, ma fallback attivo
+    assert g.poll_once()["restored"] == ["Hero"]
+    assert os.path.exists(p)
