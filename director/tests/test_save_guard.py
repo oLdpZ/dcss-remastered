@@ -121,3 +121,15 @@ def test_fallback_restore_without_token(tmp_path):
     os.remove(p)                          # nessun arm, ma fallback attivo
     assert g.poll_once()["restored"] == ["Hero"]
     assert os.path.exists(p)
+
+def test_restore_picks_numerically_latest_past_9999(tmp_path):
+    # Regression: lexicographic sort would pick "9999.cs" over the newer
+    # "10000.cs". _maybe_restore must select the numerically-highest snapshot.
+    saves, ckpt = _mk(tmp_path)
+    d = os.path.join(ckpt, "Hero"); os.makedirs(d)
+    _write(os.path.join(d, "9999.cs"), b"old")
+    _write(os.path.join(d, "10000.cs"), b"newest")
+    g = SaveGuard(saves, ckpt, {"require_death_token": False})
+    assert g._maybe_restore("Hero") is True
+    with open(os.path.join(saves, "Hero.cs"), "rb") as f:
+        assert f.read() == b"newest"

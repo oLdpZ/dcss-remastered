@@ -111,8 +111,9 @@ class SaveGuard:
         d = os.path.join(self.checkpoints_dir, name)
         if not os.path.isdir(d):
             return False
-        snaps = sorted(fn for fn in os.listdir(d)
-                       if fn.endswith(".cs") and fn[:-3].isdigit())
+        snaps = sorted((fn for fn in os.listdir(d)
+                        if fn.endswith(".cs") and fn[:-3].isdigit()),
+                       key=lambda fn: int(fn[:-3]))
         if not snaps:
             return False
         latest = os.path.join(d, snaps[-1])
